@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concord · 婚恋对象条件筛选评估工具</title>
+<meta name="description" content="Concord 是一套婚恋场景的条件筛选标准与结果评估工具，基于基础门槛、一票否决、六大核心维度与风险修正机制，生成可靠的匹配评估报告。">
+<style>
+  :root {
+    --bg: #f6f3ef;
+    --card: #ffffff;
+    --primary: #a3654b;
+    --primary-dark: #7d4a35;
+    --text: #33291f;
+    --muted: #7a6f63;
+    --border: #e6ddd3;
+    --danger: #c1443a;
+    --s: #2e7d32;
+    --a: #6a8f22;
+    --b: #c48a1b;
+    --c: #c1443a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    color: #fff;
+    padding: 40px 20px 32px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: 2px; }
+  header p { margin: 0; opacity: 0.92; font-size: 0.95rem; }
+  main {
+    max-width: 880px;
+    margin: -20px auto 60px;
+    padding: 0 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(60, 40, 20, 0.06);
+  }
+  .card h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: var(--primary-dark);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+  .card h3 {
+    font-size: 1rem;
+    margin: 18px 0 8px;
+    color: var(--text);
+  }
+  .hint { color: var(--muted); font-size: 0.85rem; margin: 4px 0 12px; }
+  .veto-list label, .gate-list label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .gate-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .gate-grid label { display: block; font-size: 0.9rem; margin-bottom: 4px; color: var(--muted); }
+  select, input[type=text] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fdfcfb;
+  }
+  .dim {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    background: #fdfbf9;
+  }
+  .dim-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+  }
+  .dim-head .score-val { color: var(--primary-dark); font-variant-numeric: tabular-nums; }
+  .dim ul { margin: 8px 0; padding-left: 20px; color: var(--muted); font-size: 0.88rem; }
+  input[type=range] { width: 100%; accent-color: var(--primary); }
+  .risk-list label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  button#generate {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: background 0.2s;
+  }
+  button#generate:hover { background: var(--primary-dark); }
+  #report { display: none; }
+  #report.show { display: block; }
+  .grade-badge {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+  }
+  .grade-S { background: var(--s); }
+  .grade-A { background: var(--a); }
+  .grade-B { background: var(--b); }
+  .grade-C { background: var(--c); }
+  .report-header { text-align: center; margin-bottom: 18px; }
+  .report-header .total { font-size: 2.4rem; font-weight: 700; margin: 10px 0 4px; }
+  table.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.92rem;
+  }
+  table.report-table th, table.report-table td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+  }
+  table.report-table th { background: #f3ece4; }
+  .tag-fail { color: var(--danger); font-weight: 700; }
+  .tag-adjust { color: var(--b); font-weight: 700; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .actions button {
+    flex: 1;
+    min-width: 140px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--primary);
+    background: #fff;
+    color: var(--primary-dark);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .actions button:hover { background: #f3ece4; }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 20px;
+  }
+  @media print {
+    header, .card:not(#report), .actions, #generate { display: none !important; }
+    #report { display: block !important; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Concord 知遇</h1>
+  <p>婚恋对象「条件筛选标准 + 结果评估」在线工具 · 理性、结构化、可追溯的匹配报告</p>
+</header>
+
+<main>
+  <div class="card">
+    <h2>第一层 · 基础门槛筛选</h2>
+    <p class="hint">先判断"能否进入了解范围"。勾选下列一票否决项将直接导致最终结论下调为 C 级（不建议继续）。</p>
+    <h3>基础信息核对（用于记录，不计分）</h3>
+    <div class="gate-grid">
+      <div>
+        <label for="ageOk">年龄区间是否符合预期</label>
+        <select id="ageOk"><option value="yes">符合</option><option value="no">不符合</option></select>
+      </div>
+      <div>
+        <label for="cityOk">是否接受异地/跨城定居</label>
+        <select id="cityOk"><option value="yes">可接受</option><option value="no">不可接受</option></select>
+      </div>
+      <div>
+        <label for="eduOk">学历背景是否达到预期</label>
+        <select id="eduOk"><option value="yes">达到</option><option value="no">未达到</option></select>
+      </div>
+      <div>
+        <label for="jobOk">职业/收入是否满足基本规划</label>
+        <select id="jobOk"><option value="yes">满足</option><option value="no">不满足</option></select>
+      </div>
+      <div>
+        <label for="familyOk">家庭结构是否存在不可接受情况</label>
+        <select id="familyOk"><option value="no">无</option><option value="yes">存在</option></select>
+      </div>
+    </div>
+
+    <h3>一票否决项</h3>
+    <div class="veto-list">
+      <label><input type="checkbox" class="veto" value="明显不诚信：隐瞒婚史、债务、重要经历"> 明显不诚信：隐瞒婚史、债务、重要经历</label>
+      <label><input type="checkbox" class="veto" value="暴力倾向：语言暴力、控制欲、肢体暴力"> 暴力倾向：语言暴力、控制欲、肢体暴力</label>
+      <label><input type="checkbox" class="veto" value="严重成瘾：赌博、酗酒、长期不受控的成瘾行为"> 严重成瘾：赌博、酗酒、长期不受控的成瘾行为</label>
+      <label><input type="checkbox" class="veto" value="价值观冲突过大：婚育、忠诚、金钱观完全对立"> 价值观冲突过大：婚育、忠诚、金钱观完全对立</label>
+      <label><input type="checkbox" class="veto" value="人品风险：长期失信、欺骗、道德底线差"> 人品风险：长期失信、欺骗、道德底线差</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>第二层 · 核心匹配维度（100 分制加权）</h2>
+    <p class="hint">拖动滑块为每个维度打分，系统会实时显示当前得分及区间说明。</p>
+
+    <div class="dim" data-max="25">
+      <div class="dim-head"><span>A. 价值观与人生方向（满分 25）</span><span class="score-val" id="valA">18</span></div>
+      <ul><li>婚姻观 / 生育观 / 金钱观 / 家庭观 / 事业观是否一致</li></ul>
+      <input type="range" min="0" max="25" value="18" id="rangeA">
+    </div>
+
+    <div class="dim" data-max="20">
+      <div class="dim-head"><span>B. 性格与相处体验（满分 20）</span><span class="score-val" id="valB">14</span></div>
+      <ul><li>情绪稳定性、边界感、沟通方式、同理心、冲突解决意愿</li></ul>
+      <input type="range" min="0" max="20" value="14" id="rangeB">
+    </div>
+
+    <div class="dim" data-max="20">
+      <div class="dim-head"><span>C. 现实条件与生活兼容度（满分 20）</span><span class="score-val" id="valC">14</span></div>
+      <ul><li>城市定居、工作节奏、收入消费、居住安排、家务分工</li></ul>
+      <input type="range" min="0" max="20" value="14" id="rangeC">
+    </div>
+
+    <div class="dim" data-max="15">
+      <div class="dim-head"><span>D. 家庭系统与责任感（满分 15）</span><span class="score-val" id="valD">10</span></div>
+      <ul><li>独立处理原生家庭关系、责任意识、承诺执行力、抗压表现</li></ul>
+      <input type="range" min="0" max="15" value="10" id="rangeD">
+    </div>
+
+    <div class="dim" data-max="10">
+      <div class="dim-head"><span>E. 成长潜力与长期经营能力（满分 10）</span><span class="score-val" id="valE">6</span></div>
+      <ul><li>自我反思、学习意愿、目标感、共同成长意愿</li></ul>
+      <input type="range" min="0" max="10" value="6" id="rangeE">
+    </div>
+
+    <div class="dim" data-max="10">
+      <div class="dim-head"><span>F. 吸引力与亲密感（满分 10）</span><span class="score-val" id="valF">6</span></div>
+      <ul><li>外在吸引、聊天兴趣、亲密边界舒适度、相处安心感</li></ul>
+      <input type="range" min="0" max="10" value="6" id="rangeF">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>第三层 · 风险修正项</h2>
+    <p class="hint">即使总分较高，出现以下情况也应下调一个等级。</p>
+    <div class="risk-list">
+      <label><input type="checkbox" class="risk" value="多次撒谎或信息前后不一致"> 多次撒谎或信息前后不一致</label>
+      <label><input type="checkbox" class="risk" value="冲突中出现羞辱、威胁、冷暴力"> 冲突中出现羞辱、威胁、冷暴力</label>
+      <label><input type="checkbox" class="risk" value="对边界、忠诚、责任完全缺乏敬畏"> 对边界、忠诚、责任完全缺乏敬畏</label>
+      <label><input type="checkbox" class="risk" value="对未来规划长期模糊且无行动力"> 对未来规划长期模糊且无行动力</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">备注（可选，将纳入报告）</h3>
+    <input type="text" id="notes" placeholder="例如：接触 3 次后的整体印象...">
+    <button id="generate" style="margin-top:16px;">生成评估报告</button>
+  </div>
+
+  <div class="card" id="report">
+    <h2>评估报告</h2>
+    <div class="report-header">
+      <div id="badgeWrap"></div>
+      <div class="total" id="totalScore">0</div>
+      <div class="hint" id="totalHint">总分（满分 100）</div>
+    </div>
+
+    <table class="report-table">
+      <thead><tr><th>维度</th><th>权重</th><th>得分</th><th>说明</th></tr></thead>
+      <tbody id="dimTableBody"></tbody>
+    </table>
+
+    <div id="gateSection"></div>
+    <div id="vetoSection"></div>
+    <div id="riskSection"></div>
+    <div id="notesSection"></div>
+    <div id="adviceSection"></div>
+
+    <div class="actions">
+      <button id="printBtn" type="button">打印 / 保存 PDF</button>
+      <button id="resetBtn" type="button">重新评估</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Concord · 条件筛选标准与结果评估系统 &nbsp;|&nbsp; 系统是辅助，不是替代判断，请结合真实相处体验综合决定。
+</footer>
+
+<script>
+(function () {
+  const dims = [
+    { id: 'A', name: '价值观与人生方向', weight: 25 },
+    { id: 'B', name: '性格与相处体验', weight: 20 },
+    { id: 'C', name: '现实条件与生活兼容度', weight: 20 },
+    { id: 'D', name: '家庭系统与责任感', weight: 15 },
+    { id: 'E', name: '成长潜力与长期经营能力', weight: 10 },
+    { id: 'F', name: '吸引力与亲密感', weight: 10 },
+  ];
+
+  dims.forEach(d => {
+    const range = document.getElementById('range' + d.id);
+    const val = document.getElementById('val' + d.id);
+    range.addEventListener('input', () => { val.textContent = range.value; });
+  });
+
+  function tierForDim(score, max) {
+    const ratio = score / max;
+    if (ratio >= 0.84) return { label: '优秀', desc: '该维度表现突出' };
+    if (ratio >= 0.6) return { label: '良好', desc: '大体符合，存在可沟通空间' };
+    return { label: '偏弱', desc: '需重点关注该维度风险' };
+  }
+
+  function gradeFromScore(total) {
+    if (total >= 85) return 'S';
+    if (total >= 70) return 'A';
+    if (total >= 55) return 'B';
+    return 'C';
+  }
+
+  function downgrade(grade) {
+    const order = ['S', 'A', 'B', 'C'];
+    const idx = order.indexOf(grade);
+    return order[Math.min(idx + 1, order.length - 1)];
+  }
+
+  const gradeInfo = {
+    S: { title: 'S级 · 高匹配对象', advice: '基础条件通过，核心价值观一致，相处感受稳定正向。建议进入深度了解或认真交往阶段。' },
+    A: { title: 'A级 · 值得重点观察', advice: '整体较匹配，局部存在可沟通问题。建议继续接触，针对分歧点专项验证。' },
+    B: { title: 'B级 · 谨慎推进', advice: '有一定吸引或条件优势，但长期稳定性存疑。建议不急于投入感情，重点观察风险项。' },
+    C: { title: 'C级 · 不建议继续', advice: '核心匹配不足，继续投入时间成本较高。建议尽早止损，保持礼貌退出。' },
+  };
+
+  document.getElementById('generate').addEventListener('click', function () {
+    const scores = dims.map(d => ({ ...d, score: Number(document.getElementById('range' + d.id).value) }));
+    const total = scores.reduce((s, d) => s + d.score, 0);
+
+    const vetoChecked = Array.from(document.querySelectorAll('.veto:checked')).map(el => el.value);
+    const riskChecked = Array.from(document.querySelectorAll('.risk:checked')).map(el => el.value);
+
+    const gateFields = [
+      ['ageOk', '年龄区间'], ['cityOk', '异地/跨城接受度'], ['eduOk', '学历背景'],
+      ['jobOk', '职业/收入'], ['familyOk', '家庭结构']
+    ];
+    const gateFails = gateFields.filter(([id]) => document.getElementById(id).value === (id === 'familyOk' ? 'yes' : 'no'));
+
+    let grade = gradeFromScore(total);
+    let forcedC = vetoChecked.length > 0;
+    if (forcedC) grade = 'C';
+    else if (riskChecked.length > 0) grade = downgrade(grade);
+
+    // Render
+    const badgeWrap = document.getElementById('badgeWrap');
+    badgeWrap.innerHTML = '<span class="grade-badge grade-' + grade + '">' + gradeInfo[grade].title + '</span>';
+    document.getElementById('totalScore').textContent = total + ' / 100';
+    document.getElementById('totalHint').textContent = forcedC ? '触发一票否决，等级已强制降为 C 级' : (riskChecked.length > 0 ? '触发风险修正，等级已下调一级' : '总分（满分 100）');
+
+    const tbody = document.getElementById('dimTableBody');
+    tbody.innerHTML = scores.map(d => {
+      const t = tierForDim(d.score, d.weight);
+      return '<tr><td>' + d.name + '</td><td>' + d.weight + '</td><td>' + d.score + '</td><td>' + t.label + ' · ' + t.desc + '</td></tr>';
+    }).join('');
+
+    const gateSection = document.getElementById('gateSection');
+    gateSection.innerHTML = gateFails.length
+      ? '<h3>基础门槛提示</h3><p class="tag-fail">以下基础条件未通过：' + gateFails.map(f => f[1]).join('、') + '，请重新确认是否进入下一轮。</p>'
+      : '';
+
+    const vetoSection = document.getElementById('vetoSection');
+    vetoSection.innerHTML = vetoChecked.length
+      ? '<h3>一票否决触发项</h3><p class="tag-fail">' + vetoChecked.join('；') + '</p>'
+      : '';
+
+    const riskSection = document.getElementById('riskSection');
+    riskSection.innerHTML = riskChecked.length
+      ? '<h3>风险修正触发项</h3><p class="tag-adjust">' + riskChecked.join('；') + '</p>'
+      : '';
+
+    const notesVal = document.getElementById('notes').value.trim();
+    const notesSection = document.getElementById('notesSection');
+    notesSection.innerHTML = notesVal ? '<h3>备注</h3><p>' + notesVal.replace(/</g, '&lt;') + '</p>' : '';
+
+    document.getElementById('adviceSection').innerHTML =
+      '<h3>结论与建议</h3><p>' + gradeInfo[grade].advice + '</p>';
+
+    const report = document.getElementById('report');
+    report.classList.add('show');
+    report.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    document.getElementById('report').classList.remove('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
