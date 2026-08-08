@@ -349,6 +349,15 @@
     return order[Math.min(idx + 1, order.length - 1)];
   }
 
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   const gradeInfo = {
     S: { title: 'S级 · 高匹配对象', advice: '基础条件通过，核心价值观一致，相处感受稳定正向。建议进入深度了解或认真交往阶段。' },
     A: { title: 'A级 · 值得重点观察', advice: '整体较匹配，局部存在可沟通问题。建议继续接触，针对分歧点专项验证。' },
@@ -378,7 +387,15 @@
     const badgeWrap = document.getElementById('badgeWrap');
     badgeWrap.innerHTML = '<span class="grade-badge grade-' + grade + '">' + gradeInfo[grade].title + '</span>';
     document.getElementById('totalScore').textContent = total + ' / 100';
-    document.getElementById('totalHint').textContent = forcedC ? '触发一票否决，等级已强制降为 C 级' : (riskChecked.length > 0 ? '触发风险修正，等级已下调一级' : '总分（满分 100）');
+    let hintText = '总分（满分 100）';
+    if (forcedC && riskChecked.length > 0) {
+      hintText = '触发一票否决（等级强制降为 C 级），同时存在风险修正项，请重点核实';
+    } else if (forcedC) {
+      hintText = '触发一票否决，等级已强制降为 C 级';
+    } else if (riskChecked.length > 0) {
+      hintText = '触发风险修正，等级已下调一级';
+    }
+    document.getElementById('totalHint').textContent = hintText;
 
     const tbody = document.getElementById('dimTableBody');
     tbody.innerHTML = scores.map(d => {
@@ -403,7 +420,7 @@
 
     const notesVal = document.getElementById('notes').value.trim();
     const notesSection = document.getElementById('notesSection');
-    notesSection.innerHTML = notesVal ? '<h3>备注</h3><p>' + notesVal.replace(/</g, '&lt;') + '</p>' : '';
+    notesSection.innerHTML = notesVal ? '<h3>备注</h3><p>' + escapeHtml(notesVal) + '</p>' : '';
 
     document.getElementById('adviceSection').innerHTML =
       '<h3>结论与建议</h3><p>' + gradeInfo[grade].advice + '</p>';
